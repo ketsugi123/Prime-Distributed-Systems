@@ -1,0 +1,33 @@
+syntax = "proto3";
+
+import "shared/general.proto";
+option java_multiple_files = true;
+option java_package = "primeServerCommunicationService";
+package primeServerCommunication;
+
+service PrimeServerCommunicationService {
+  rpc ringMessage(stream RingMessageRequest) returns (stream RingMessageResponse);
+}
+
+enum PrimeMessageState{
+  PROCESSING = 0;
+  PRIME = 1;
+  NOT_PRIME = 2;
+}
+
+message RingMessageRequest {
+  uint64 number = 1;
+  string requestId = 2;
+  PrimeMessageState state = 3;
+  shared.ServerInfo origin = 4;
+}
+
+message RingMessageResponse {
+  uint64 number = 1;
+  PrimeMessageState state = 2;
+  shared.ServerInfo origin = 3;
+}
+
+
+
+

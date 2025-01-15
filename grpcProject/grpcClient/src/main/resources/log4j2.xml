@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Configuration status="WARN">
+    <!-- Appender Configuration -->
+    <Appenders>
+        <Console name="Console" target="SYSTEM_OUT">
+            <PatternLayout pattern="%d{yyyy-MM-dd HH:mm:ss} %-5level %logger{36} - %msg%n" />
+        </Console>
+    </Appenders>
+
+    <Filters>
+        <!-- Allow only INFO and ERROR logs -->
+        <ThresholdFilter level="info" onMatch="ACCEPT" onMismatch="DENY" />
+    </Filters>
+
+    <!-- Loggers Configuration -->
+    <Loggers>
+        <!-- Root Logger level set to INFO to disable TRACE and DEBUG -->
+        <Root level="info">
+            <AppenderRef ref="Console" />
+        </Root>
+
+        <!-- Optional: Specific logger for a class/package (if needed) -->
+        <Logger name="com.example.MyClass" level="info" additivity="false">
+            <AppenderRef ref="Console" />
+        </Logger>
+
+    </Loggers>
+</Configuration>

@@ -1,0 +1,17 @@
+syntax = "proto3";
+
+option java_multiple_files = true;
+option java_package = "primeServerService";
+package primeServerService;
+
+service PrimeServerService {
+  rpc isPrime(stream PrimeRequest) returns (stream PrimeResponse);
+}
+
+message PrimeRequest{
+    uint64 number = 1;
+}
+
+message PrimeResponse{
+    bool isPrime = 1;
+}

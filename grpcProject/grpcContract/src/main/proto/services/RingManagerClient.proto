@@ -1,0 +1,19 @@
+syntax = "proto3";
+import "shared/general.proto";
+
+option java_multiple_files = true;
+option java_package = "ringManagerClientService";
+
+package ringManagerClientService;
+
+service RingManagerClientService {
+  rpc getPrimeServer(GetPrimeServerRequest) returns (GetPrimeServerResponse);
+}
+
+message GetPrimeServerRequest {
+
+}
+
+message GetPrimeServerResponse {
+  shared.ServerInfo primeServer = 1;
+}

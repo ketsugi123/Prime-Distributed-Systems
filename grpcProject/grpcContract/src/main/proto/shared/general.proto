@@ -1,0 +1,13 @@
+syntax = "proto3";
+
+package shared;
+
+message ServerInfo {
+  string ip = 1;
+  uint32 port = 2;
+}
+
+message SimpleResponse {
+  bool success = 1;
+  string message = 2;
+}
