@@ -16,11 +16,9 @@ import redis.clients.jedis.Jedis;
 import ringManagerPrimeService.RegisterServerRequest;
 import ringManagerPrimeService.RegisterServerResponse;
 import ringManagerPrimeService.RingManagerPrimeServiceGrpc;
+import shared.General;
 
 import java.io.IOException;
-import java.net.InetAddress;
-import java.net.NetworkInterface;
-import java.util.Enumeration;
 
 public class PrimeServer {
     private static final InternalLogger logger = Log4J2LoggerFactory.getInstance(PrimeServer.class.getName());
@@ -57,23 +55,26 @@ public class PrimeServer {
 
         // Connect to Redis server
         Jedis redis = new Jedis(redisAddress, redisPort);
-        if(redis.getConnection().isBroken()) {
+        if (redis.getConnection().isBroken()) {
             throw new RuntimeException("Redis connection failed");
         }
 
         // Register this PrimeServer with the RingManager
-        registerServer(ringManagerChannel, serverDetails);
+        StreamObserver<RegisterServerRequest> serverRing = getServerRing(ringManagerChannel, serverDetails);
 
         // Set up and start the gRPC server for the PrimeServer service
         Server server = ServerBuilder.forPort(svcPort)
-                .addService(new PrimeServerClientImpl(redis, dockerclient, ringManagerChannel, serverDetails, redisServerDetails))
+                .addService(new PrimeServerClientImpl(
+                        redis, dockerclient, ringManagerChannel,
+                        serverDetails, redisServerDetails, serverRing)
+                )
                 .addService(new PrimeServerCommunication(redis, dockerclient, ringManagerChannel, serverDetails, redisServerDetails))
                 .build();
 
 
         server.start();
-		
-		logger.info("PrimeServer started, listening on {}", svcPort);
+
+        logger.info("PrimeServer started, listening on {}", svcPort);
 
         // Add shutdown hook to gracefully stop the server
         Runtime.getRuntime().addShutdownHook(new ShutdownHook(server));
@@ -84,7 +85,7 @@ public class PrimeServer {
     }
 
 
-    private static void registerServer(ManagedChannel channel, ServerDetails serverDetails) {
+    private static StreamObserver<RegisterServerRequest> getServerRing(ManagedChannel channel, ServerDetails serverDetails) {
         RegisterServerRequest request = RegisterServerRequest
                 .newBuilder()
                 .setPrimeServer(serverDetails.getThisServerInfo())
@@ -92,25 +93,25 @@ public class PrimeServer {
 
         // Register the server with RingManager using the asynchronous gRPC stub
 
-        RingManagerPrimeServiceGrpc
-                .newStub(channel)
-                .registerServer(request, new StreamObserver<>() {
-            @Override
-            public void onNext(RegisterServerResponse registerServerResponse) {
-                logger.info(registerServerResponse.getResponse().getMessage());
-            }
+        return RingManagerPrimeServiceGrpc.newStub(channel)
+                .registerServer(new StreamObserver<RegisterServerResponse>() {
+                    @Override
+                    public void onNext(RegisterServerResponse registerServerResponse) {
+                        General.ServerInfo nextServerInfo = registerServerResponse.getNextServer();
+                        logger.info("PrimeServer received server info: " + nextServerInfo);
+                    }
 
-            @Override
-            public void onError(Throwable throwable) {
-				logger.error("Error registering server: {}", throwable.getMessage());
-                System.exit(1);
-            }
+                    @Override
+                    public void onError(Throwable throwable) {
+                        logger.error("Error registering server: {}", throwable.getMessage());
+                        System.exit(1);
+                    }
 
-            @Override
-            public void onCompleted() {
-                logger.info("Server registration completed awaiting requests");
-            }
-        });
+                    @Override
+                    public void onCompleted() {
+                        logger.info("Server registration completed awaiting requests");
+                    }
+                });
     }
 
 }

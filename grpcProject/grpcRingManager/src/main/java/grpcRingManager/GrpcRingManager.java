@@ -1,12 +1,10 @@
-package grpcserverapp;
+package grpcRingManager;
 
 // generic ServerApp for hosting grpcService
 
 import io.grpc.ServerBuilder;
 import io.grpc.netty.shaded.io.netty.util.internal.logging.InternalLogger;
 import io.grpc.netty.shaded.io.netty.util.internal.logging.Log4J2LoggerFactory;
-
-import static java.lang.System.getenv;
 
 
 public class GrpcRingManager {

@@ -1,4 +1,4 @@
-package grpcserverapp;
+package grpcRingManager;
 
 public class ShutdownHook extends Thread {
     io.grpc.Server svc;

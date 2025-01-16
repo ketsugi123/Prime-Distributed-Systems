@@ -13,9 +13,7 @@ import primeServerService.PrimeRequest;
 import primeServerService.PrimeResponse;
 import primeServerService.PrimeServerServiceGrpc;
 import redis.clients.jedis.Jedis;
-import ringManagerPrimeService.NextRingServerRequest;
-import ringManagerPrimeService.NextRingServerResponse;
-import ringManagerPrimeService.RingManagerPrimeServiceGrpc;
+import ringManagerPrimeService.*;
 import ringManagerPrimeService.RingManagerPrimeServiceGrpc.RingManagerPrimeServiceStub;
 import shared.General.ServerInfo;
 
@@ -29,7 +27,7 @@ public class PrimeServerClientImpl extends PrimeServerServiceGrpc.PrimeServerSer
     private final RingManagerPrimeServiceStub ringManagerStub;
     private final ServerDetails serverDetails;
     private final ServerDetails redisServerDetails;
-    
+    private final StreamObserver<RegisterServerRequest> serverRing;
     private static final InternalLogger logger = Log4J2LoggerFactory.getInstance(PrimeServerClientImpl.class);
 
     public PrimeServerClientImpl(
@@ -37,13 +35,15 @@ public class PrimeServerClientImpl extends PrimeServerServiceGrpc.PrimeServerSer
             DockerClient dockerClient,
             ManagedChannel ringManagerChannel,
             ServerDetails serverDetails,
-            ServerDetails redisServerDetails
+            ServerDetails redisServerDetails,
+            StreamObserver<RegisterServerRequest> serverRing
     ) {
         this.redisClient = redisClient;
         this.dockerClient = dockerClient;
         this.ringManagerStub = RingManagerPrimeServiceGrpc.newStub(ringManagerChannel);
         this.serverDetails = serverDetails;
         this.redisServerDetails = redisServerDetails;
+        this.serverRing = serverRing;
     }
 
     @Override
@@ -83,57 +83,34 @@ public class PrimeServerClientImpl extends PrimeServerServiceGrpc.PrimeServerSer
 
     private void forwardRingMessageToNextServer(Long requestNumber, String requestId, StreamObserver<PrimeResponse> responseObserver) {
         logger.info("Forwarding Ring Message to next Server");
-
-        NextRingServerRequest request = NextRingServerRequest
+        RegisterServerRequest registerServerRequest = RegisterServerRequest
                 .newBuilder()
-                .setCurrentRingServer(serverDetails.getThisServerInfo())
+                .setPrimeServer(serverDetails.getThisServerInfo())
                 .build();
-        StreamObserver<NextRingServerRequest> requestStream = ringManagerStub.nextRingServer(new StreamObserver<>() {
-            // Response handler for Next Ring
-            @Override
-            public void onNext(NextRingServerResponse nextServer) {
-                logger.info("Received Next Ring Server");
-                ServerInfo nextServerInfo = nextServer.getNextRingServer();
+        serverRing.onNext(registerServerRequest);
+        logger.info("Received Next Ring Server");
+        ServerInfo nextServerInfo = null;
 
-                // if next is the same server which means there exists only one
-                if (noNextRingServer(nextServerInfo)) {
-                    logger.info("I am the only server in the ring, launching container...");
-                    boolean result = DockerUtils
-                            .launchPrimeContainer(dockerClient, redisServerDetails, requestNumber);
-                    logger.info("LONELY SERVER RESULT: " + result);
-                    
-                    //Send response to client and store it in the redis database
-                    sendResponseToClient(requestId, result);
-                    redisClient.set(requestNumber + "", String.valueOf(result));
-                } else {
-                    ServerInfo originServer = serverDetails.getThisServerInfo();
-                    PrimeMessageState initialState = PrimeMessageState.PROCESSING;
-                    RingMessageBuilder.ringMessageRequest(
-                            requestNumber,
-                            requestId,
-                            initialState,
-                            originServer,
-                            nextServer.getNextRingServer(), null);
-                }
-            }
+        // if next is the same server which means there exists only one
+        if (noNextRingServer(nextServerInfo)) {
+            logger.info("I am the only server in the ring, launching container...");
+            boolean result = DockerUtils
+                    .launchPrimeContainer(dockerClient, redisServerDetails, requestNumber);
+            logger.info("LONELY SERVER RESULT: " + result);
 
-            @Override
-            public void onError(Throwable t) {
-                responseObserver.onError(t);
-            }
-
-            @Override
-            public void onCompleted() {
-                // No additional action needed on completion
-            }
-
-            private boolean noNextRingServer(ServerInfo nextServerInfo) {
-                return nextServerInfo.getIp().equals(serverDetails.getServerAddress()) && nextServerInfo.getPort() == serverDetails.getServerPort();
-            }
-        });
-
-        requestStream.onNext(request);
+            //Send response to client and store it in the redis database
+            sendResponseToClient(requestId, result);
+            redisClient.set(requestNumber + "", String.valueOf(result));
+        } else {
+            ServerInfo originServer = serverDetails.getThisServerInfo();
+            PrimeMessageState initialState = PrimeMessageState.PROCESSING;
+            RingMessageBuilder.ringMessageRequest(
+                    requestNumber,
+                    requestId,
+                    initialState,
+                    originServer,
+                    nextServer.getNextRingServer(), null);
+        }
     }
-
 
 }

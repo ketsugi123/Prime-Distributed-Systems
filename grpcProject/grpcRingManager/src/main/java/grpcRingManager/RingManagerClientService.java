@@ -1,4 +1,4 @@
-package grpcserverapp;
+package grpcRingManager;
 
 import io.grpc.netty.shaded.io.netty.util.internal.logging.InternalLogger;
 import io.grpc.netty.shaded.io.netty.util.internal.logging.Log4J2LoggerFactory;

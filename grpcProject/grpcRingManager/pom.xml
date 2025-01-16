@@ -41,7 +41,7 @@
                     </descriptors>
                     <archive>
                         <manifest>
-                            <mainClass>grpcserverapp.GrpcRingManager</mainClass>
+                            <mainClass>grpcRingManager.GrpcRingManager</mainClass>
                         </manifest>
                     </archive>
                 </configuration>

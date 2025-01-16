@@ -6,8 +6,7 @@ option java_package = "ringManagerPrimeService";
 package ringManagerPrimeService;
 
 service RingManagerPrimeService {
-  rpc registerServer(RegisterServerRequest) returns (RegisterServerResponse);
-  rpc nextRingServer(stream NextRingServerRequest) returns (NextRingServerResponse);
+  rpc registerServer(stream RegisterServerRequest) returns (stream RegisterServerResponse);
 }
 
 message RegisterServerRequest {
@@ -15,7 +14,7 @@ message RegisterServerRequest {
 }
 
 message RegisterServerResponse {
-  shared.SimpleResponse response = 1;
+  shared.ServerInfo nextServer = 1;
 }
 
 

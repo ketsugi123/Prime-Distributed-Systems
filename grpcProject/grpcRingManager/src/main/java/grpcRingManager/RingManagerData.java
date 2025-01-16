@@ -1,4 +1,4 @@
-package grpcserverapp;
+package grpcRingManager;
 
 import shared.General.ServerInfo;
 
