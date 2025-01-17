@@ -89,4 +89,6 @@ The client application uses two contracts:
     - The system should support adding new servers dynamically, improving load balancing.
 
 
-
+# Collaborators
+- Alexandre Severino - alexandreseverinowork@gmail.com
+- Diogo Carichas - diogomcc5@gmail.com
