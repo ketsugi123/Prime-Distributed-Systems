@@ -8,14 +8,13 @@ import io.grpc.ManagedChannel;
 import io.grpc.netty.shaded.io.netty.util.internal.logging.InternalLogger;
 import io.grpc.netty.shaded.io.netty.util.internal.logging.Log4J2LoggerFactory;
 import io.grpc.stub.StreamObserver;
-import primeServerCommunicationService.PrimeMessageState;
 import primeServerService.PrimeRequest;
 import primeServerService.PrimeResponse;
 import primeServerService.PrimeServerServiceGrpc;
 import redis.clients.jedis.Jedis;
-import ringManagerPrimeService.*;
-import ringManagerPrimeService.RingManagerPrimeServiceGrpc.RingManagerPrimeServiceStub;
-import shared.General.ServerInfo;
+import ringManagerPrimeService.RegisterServerRequest;
+import ringManagerPrimeService.RingManagerPrimeServiceGrpc;
+import shared.General;
 
 import static grpcPrimeServer.ClientRequestMem.sendResponseToClient;
 
@@ -24,7 +23,7 @@ public class PrimeServerClientImpl extends PrimeServerServiceGrpc.PrimeServerSer
 
     private final Jedis redisClient;
     private final DockerClient dockerClient;
-    private final RingManagerPrimeServiceStub ringManagerStub;
+    private final RingManagerPrimeServiceGrpc.RingManagerPrimeServiceStub ringManagerStub;
     private final ServerDetails serverDetails;
     private final ServerDetails redisServerDetails;
     private final StreamObserver<RegisterServerRequest> serverRing;
@@ -89,8 +88,8 @@ public class PrimeServerClientImpl extends PrimeServerServiceGrpc.PrimeServerSer
                 .build();
         serverRing.onNext(registerServerRequest);
         logger.info("Received Next Ring Server");
-        ServerInfo nextServerInfo = null;
-
+        General.ServerInfo nextServerInfo = null;
+/**
         // if next is the same server which means there exists only one
         if (noNextRingServer(nextServerInfo)) {
             logger.info("I am the only server in the ring, launching container...");
@@ -111,6 +110,7 @@ public class PrimeServerClientImpl extends PrimeServerServiceGrpc.PrimeServerSer
                     originServer,
                     nextServer.getNextRingServer(), null);
         }
+ */
     }
 
 }
