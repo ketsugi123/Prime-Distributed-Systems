@@ -8,6 +8,7 @@ import io.grpc.ManagedChannel;
 import io.grpc.netty.shaded.io.netty.util.internal.logging.InternalLogger;
 import io.grpc.netty.shaded.io.netty.util.internal.logging.Log4J2LoggerFactory;
 import io.grpc.stub.StreamObserver;
+import primeServerCommunicationService.PrimeMessageState;
 import primeServerService.PrimeRequest;
 import primeServerService.PrimeResponse;
 import primeServerService.PrimeServerServiceGrpc;
@@ -15,6 +16,7 @@ import redis.clients.jedis.Jedis;
 import ringManagerPrimeService.RegisterServerRequest;
 import ringManagerPrimeService.RingManagerPrimeServiceGrpc;
 import shared.General;
+import shared.General.ServerInfo;
 
 import static grpcPrimeServer.ClientRequestMem.sendResponseToClient;
 
@@ -23,26 +25,22 @@ public class PrimeServerClientImpl extends PrimeServerServiceGrpc.PrimeServerSer
 
     private final Jedis redisClient;
     private final DockerClient dockerClient;
-    private final RingManagerPrimeServiceGrpc.RingManagerPrimeServiceStub ringManagerStub;
     private final ServerDetails serverDetails;
     private final ServerDetails redisServerDetails;
-    private final StreamObserver<RegisterServerRequest> serverRing;
     private static final InternalLogger logger = Log4J2LoggerFactory.getInstance(PrimeServerClientImpl.class);
-
+    private final NextRingServerHandler nextRingServerHandler;
     public PrimeServerClientImpl(
             Jedis redisClient,
             DockerClient dockerClient,
-            ManagedChannel ringManagerChannel,
             ServerDetails serverDetails,
             ServerDetails redisServerDetails,
-            StreamObserver<RegisterServerRequest> serverRing
+            NextRingServerHandler nextRingServerHandler
     ) {
         this.redisClient = redisClient;
         this.dockerClient = dockerClient;
-        this.ringManagerStub = RingManagerPrimeServiceGrpc.newStub(ringManagerChannel);
         this.serverDetails = serverDetails;
         this.redisServerDetails = redisServerDetails;
-        this.serverRing = serverRing;
+        this.nextRingServerHandler = nextRingServerHandler;
     }
 
     @Override
@@ -80,7 +78,7 @@ public class PrimeServerClientImpl extends PrimeServerServiceGrpc.PrimeServerSer
     }
 
 
-    private void forwardRingMessageToNextServer(Long requestNumber, String requestId, StreamObserver<PrimeResponse> responseObserver) {
+    public void forwardRingMessageToNextServer(Long requestNumber, String requestId, StreamObserver<PrimeResponse> responseObserver) {
         logger.info("Forwarding Ring Message to next Server");
         RegisterServerRequest registerServerRequest = RegisterServerRequest
                 .newBuilder()
@@ -88,8 +86,8 @@ public class PrimeServerClientImpl extends PrimeServerServiceGrpc.PrimeServerSer
                 .build();
         serverRing.onNext(registerServerRequest);
         logger.info("Received Next Ring Server");
-        General.ServerInfo nextServerInfo = null;
-/**
+        ServerInfo nextServerInfo = null;
+
         // if next is the same server which means there exists only one
         if (noNextRingServer(nextServerInfo)) {
             logger.info("I am the only server in the ring, launching container...");
@@ -110,7 +108,10 @@ public class PrimeServerClientImpl extends PrimeServerServiceGrpc.PrimeServerSer
                     originServer,
                     nextServer.getNextRingServer(), null);
         }
- */
+
+    }
+
+    private boolean noNextRingServer(ServerInfo nextServerInfo) {
     }
 
 }

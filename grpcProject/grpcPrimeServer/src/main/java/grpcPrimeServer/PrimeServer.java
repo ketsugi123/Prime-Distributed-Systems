@@ -2,6 +2,7 @@ package grpcPrimeServer;
 
 import com.github.dockerjava.api.DockerClient;
 import grpcPrimeServer.model.ServerDetails;
+import grpcPrimeServer.services.NextRingServerHandler;
 import grpcPrimeServer.services.PrimeServerClientImpl;
 import grpcPrimeServer.services.PrimeServerCommunication;
 import grpcPrimeServer.utils.DockerUtils;
@@ -60,15 +61,17 @@ public class PrimeServer {
         }
 
         // Register this PrimeServer with the RingManager
-        StreamObserver<RegisterServerRequest> serverRing = getServerRing(ringManagerChannel, serverDetails);
+        NextRingServerHandler serverRing = NextRingServerHandler.createHandler(
+                serverDetails.getThisServerInfo(), ringManagerChannel
+        );
 
         // Set up and start the gRPC server for the PrimeServer service
         Server server = ServerBuilder.forPort(svcPort)
                 .addService(new PrimeServerClientImpl(
-                        redis, dockerclient, ringManagerChannel,
-                        serverDetails, redisServerDetails, serverRing)
+                        redis, dockerclient, serverDetails,
+                        redisServerDetails, serverRing)
                 )
-                .addService(new PrimeServerCommunication(redis, dockerclient, ringManagerChannel, serverDetails, redisServerDetails))
+                .addService(new PrimeServerCommunication(redis, dockerclient, serverDetails, redisServerDetails, serverRing))
                 .build();
 
 
@@ -84,34 +87,5 @@ public class PrimeServer {
         server.shutdown();
     }
 
-
-    private static StreamObserver<RegisterServerRequest> getServerRing(ManagedChannel channel, ServerDetails serverDetails) {
-        RegisterServerRequest request = RegisterServerRequest
-                .newBuilder()
-                .setPrimeServer(serverDetails.getThisServerInfo())
-                .build();
-
-        // Register the server with RingManager using the asynchronous gRPC stub
-
-        return RingManagerPrimeServiceGrpc.newStub(channel)
-                .registerServer(new StreamObserver<RegisterServerResponse>() {
-                    @Override
-                    public void onNext(RegisterServerResponse registerServerResponse) {
-                        General.ServerInfo nextServerInfo = registerServerResponse.getNextServer();
-                        logger.info("PrimeServer received server info: " + nextServerInfo);
-                    }
-
-                    @Override
-                    public void onError(Throwable throwable) {
-                        logger.error("Error registering server: {}", throwable.getMessage());
-                        System.exit(1);
-                    }
-
-                    @Override
-                    public void onCompleted() {
-                        logger.info("Server registration completed awaiting requests");
-                    }
-                });
-    }
 
 }

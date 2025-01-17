@@ -7,10 +7,13 @@ import io.grpc.ManagedChannel;
 import io.grpc.netty.shaded.io.netty.util.internal.logging.InternalLogger;
 import io.grpc.netty.shaded.io.netty.util.internal.logging.Log4J2LoggerFactory;
 import io.grpc.stub.StreamObserver;
+import primeServerCommunicationService.PrimeMessageState;
+import primeServerCommunicationService.PrimeServerCommunicationServiceGrpc;
+import primeServerCommunicationService.PrimeServerCommunicationServiceGrpc.PrimeServerCommunicationServiceImplBase;
+import primeServerCommunicationService.RingMessageRequest;
+import primeServerCommunicationService.RingMessageResponse;
 import redis.clients.jedis.Jedis;
-import ringManagerPrimeService.NextRingServerRequest;
-import ringManagerPrimeService.NextRingServerResponse;
-import ringManagerPrimeService.RingManagerPrimeServiceGrpc;
+import ringManagerPrimeService.*;
 import shared.General.ServerInfo;
 
 import static grpcPrimeServer.ClientRequestMem.sendResponseToClient;
@@ -22,29 +25,29 @@ public class PrimeServerCommunication extends PrimeServerCommunicationServiceImp
 
     private final Jedis redisClient;
     private final DockerClient dockerClient;
-    private final RingManagerPrimeServiceGrpc.RingManagerPrimeServiceStub ringManagerStub;
     private final ServerDetails serverDetails;
     private final ServerDetails redisServerDetails;
+    private final NextRingServerHandler nextRingServerHandler;
     private static final InternalLogger logger = Log4J2LoggerFactory.getInstance(PrimeServerCommunication.class);
-    
-    
+
+
     public PrimeServerCommunication(
             Jedis redisClient,
             DockerClient dockerClient,
-            ManagedChannel ringManagerChannel,
             ServerDetails serverDetails,
-            ServerDetails redisServerDetails) {
+            ServerDetails redisServerDetails,
+            NextRingServerHandler nextRingServerHandler) {
         this.redisClient = redisClient;
         this.dockerClient = dockerClient;
-        this.ringManagerStub = RingManagerPrimeServiceGrpc.newStub(ringManagerChannel);
         this.serverDetails = serverDetails;
         this.redisServerDetails = redisServerDetails;
+        this.nextRingServerHandler = nextRingServerHandler;
     }
 
 
     @Override
     public StreamObserver<RingMessageRequest> ringMessage(StreamObserver<RingMessageResponse> ringMessageResponseStreamObserver) {
-        return new StreamObserver<RingMessageRequest>() {
+         StreamObserver<RingMessageRequest> requestStreamObserver = new StreamObserver<RingMessageRequest>() {
             @Override
             public void onNext(RingMessageRequest request) {
                 logger.info("Received ring request");
@@ -100,7 +103,7 @@ public class PrimeServerCommunication extends PrimeServerCommunicationServiceImp
                 logger.info("Ring Message Completed");
             }
         };
-
+         return requestStreamObserver;
     }
 
     private PrimeMessageState getCachedPrimeState(long number, PrimeMessageState currentState) {
@@ -127,7 +130,7 @@ public class PrimeServerCommunication extends PrimeServerCommunicationServiceImp
 
         // Obtain the next server information from RingManager asynchronously
         StreamObserver<NextRingServerRequest> requestStream = ringManagerStub.nextRingServer(
-                 new StreamObserver<NextRingServerResponse>() {
+                new StreamObserver<NextRingServerResponse>() {
                     @Override
                     public void onNext(NextRingServerResponse nextRingServerResponse) {
                         logger.info("Received next ring response");
